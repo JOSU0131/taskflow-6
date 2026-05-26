@@ -274,4 +274,6 @@ En lugar de crear tablas con código SQL como hicimos en la web de Neon, ahora v
 
     1. Dentro de la carpeta lib/, creamos un archivo nuevo llamado schema.js.
 
-    2. Hacemos traducir nuestras tablas categories y products al idioma de Drizzle:
+    2. Hacemos traducir nuestras tablas categories y products al idioma de Drizzle. (Codigo en schema.js)
+
+## Paso 4.3: Configurar Drizzle (drizzle.config.js)

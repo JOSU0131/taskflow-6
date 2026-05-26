@@ -7,9 +7,9 @@ Bienvenido a la evolución de HammerFlow Forge. En esta Fase 6, transformamos nu
 Hemos sustituido las estructuras volátiles e inseguras en memoria por un esquema de datos relacional estricto, blindado contra fallos de integridad mediante identificadores únicos UUID, e introducido capas de persistencia avanzadas tanto en SQL puro como mediante la abstracción moderna de Drizzle ORM para garantizar el tipado unificado de los datos de nuestro inventario.
 
 ## 🚀 Enlaces del Proyecto
-    - Enlace Neon
-    - Enlace Drizzle
-    -(falta vercel)
+   
+    - Despliegue Frontend (Vercel): https://taskflow-6.vercel.app/api/products
+    - Tablero de Organización (Trello): [https://trello.com/b/LeLvBjuK/my-trello-board]
 
 
 ## 🛠️ Tecnologías Utilizadas

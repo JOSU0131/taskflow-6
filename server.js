@@ -10,6 +10,11 @@ app.use(express.json());
 // -------------------------------------------------------------------------
 // RUTA 1: GET - Obtener productos con su categoría (Para pintar la tabla)
 // -------------------------------------------------------------------------
+
+// Ruta de bienvenida en la raíz
+app.get('/', (req, res) => {
+  res.send('🌌 ¡Servidor de HammerFlow Forge operando con éxito en la nube de Vercel!');
+});
 app.get('/api/products', async (req, res) => {
   try {
     const productos = await sql`
