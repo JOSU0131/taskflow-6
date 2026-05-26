@@ -224,3 +224,54 @@ Montaremos servidor Express rápido. Siguiendo estos pasos:
     El driver separa estrictamente las instrucciones SQL de los datos proporcionados por el usuario. El motor de PostgreSQL compila primero la estructura del comando de forma segura y luego trata la entrada del usuario estrictamente como un texto plano (un string de datos), impidiendo que cualquier comando infiltrado sea ejecutado por el procesador.
 
 ¡Ya tenemos el Backend blindado y listo para entregar
+
+# Paso 4
+
+Notas sobre Drizzle ORM
+    Drizzle es una capa que se pone encima de la base de datos y te permite:
+
+        1. Definir la estructura de tus tablas usando código JavaScript/TypeScript.
+
+        2. Hacer consultas usando funciones de código (como .select(), .insert()) en lugar de strings de texto plano.
+
+        3. Tener autocompletado en VS Code. Si empiezas a escribir un campo, el editor te sugiere las columnas reales de tu base de datos.
+
+## Paso 4.1: Instalar Drizzle y sus herramientas
+    Vamos a instalar el ORM y su kit de desarrollo (Drizzle Kit), que sirve para leer archivos y sincronizarlos con Neon automáticamente.
+        1. Ejecuta comando para instalar dependencias del ORM:
+            Bash
+            npm install drizzle-orm
+
+        2. Ahora instalamos las herramientas de desarrollo (las que nos ayudarán a gestionar las migraciones):
+            Bash
+            npm install -D drizzle-kit
+            - - -
+
+## **NOTA IMPORTANTE**:  Para entender exactamente qué significa el aviso técnico (tras npm install -D drizzle-kit)
+    - ¿Qué paso?
+    Cuando instalas herramientas de desarrollo pesadas como drizzle-kit, estas dependen a su vez de decenas de minilibrerías escritas por otros desarrolladores (por eso te dice que ha añadido 16 paquetes).
+
+    De vez en cuando, en alguna de esas sublibrerías secundarias se descubre un fallo menor. El equipo de seguridad de npm lo registra y te avisa con ese mensaje flotante.
+
+        1. Son de severidad moderada ("moderate severity"): No son fallos críticos que permitan que te hackeen el sistema. Suelen ser cosas tontas como que una función de formatear texto puede ir un poco lenta si le metes un archivo de 5 gigas
+
+        2. Es una herramienta de desarrollo (-D): drizzle-kit solo se ejecuta en tu máquina local mientras diseñas las tablas. Ese código nunca viaja al servidor web final de producción en Vercel, por lo que el usuario final jamás estará expuesto.
+
+        3. Error de Drizzle: Paquetes obsoletos advertidos (deprecated): Las advertencias amarillas de arriba simplemente avisan de que un par de complementos internos de Drizzle.
+
+    - Cómo solucionarlo (La buena práctica de seguridad)
+    Como el propio npm te sugiere en la consola, puedes intentar que el gestor corrija de forma automática esas sublibrerías buscando parches que no rompan tu código.
+        Bash
+        npm audit fix
+
+        ¿Qué hace esto? Va a los servidores de npm, busca si los creadores de esos subpaquetes han sacado una versión corregida que sea compatible y la sustituye en tu node_modules y tu package-lock.json en un segundo.
+
+        CONCLUSION: No cambió el resultado pero no nos afecta por ahora, ni va a comprometer tu proyecto.
+
+
+## Paso 4.2: Definir el Esquema en Código (lib/schema.js)
+En lugar de crear tablas con código SQL como hicimos en la web de Neon, ahora vamos a definir en un archivo JavaScript para que Drizzle las entienda.
+
+    1. Dentro de la carpeta lib/, creamos un archivo nuevo llamado schema.js.
+
+    2. Hacemos traducir nuestras tablas categories y products al idioma de Drizzle:
