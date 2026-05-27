@@ -277,3 +277,47 @@ En lugar de crear tablas con código SQL como hicimos en la web de Neon, ahora v
     2. Hacemos traducir nuestras tablas categories y products al idioma de Drizzle. (Codigo en schema.js)
 
 ## Paso 4.3: Configurar Drizzle (drizzle.config.js)
+Necesitamos un archivo en la raíz para que la herramienta de desarrollo de Drizzle sepa dónde leer tus tablas y cómo conectarse a Neon.
+    1. En la raíz del proyecto (taskflow-6) creamos un archivo llamado exactamente: drizzle.config.js
+    2. Dentro introduciremos condigo de imports, if, 
+        y export default defineConfig (
+            out: './drizzle',               // Carpeta automática donde guardará el historial de cambios
+            schema: './lib/schema.js',      // Dónde está el archivo con el diseño de tus tablas
+            dialect: 'postgresql',          // El motor de base de datos que usamos
+            dbCredentials: 
+            url: process.env.DATABASE_URL, // Tu contraseña secreta de Neon
+        );
+
+## Paso 4.4: Modificar el enchufe de la base de datos (lib/db.js)
+Modificamos el archivo lib/db.js que se conectaba usando el cliente nativo de Neon. Vamos a actualizarlo para que ahora envuelva esa conexión dentro del motor de Drizzle ORM.
+    1. En el archivo lib/db.js (dentro de la carpeta lib).
+    2. Modificamos el archivo, introduciendo el import de Drizzle y "el cerebro de Drizzle" inyectado encima para darnos capacidad de consulta:
+        export const db = drizzle(sqlConnection, { schema });
+
+## Paso 4.5: El test definitivo del ORM (test-orm.js)
+Vamos a comprobar científicamente que Drizzle se conecta a tu base de datos cloud y entiende las tablas de miniaturas sin escribir ni una sola palabra de SQL puro.
+    1. En la raíz del proyecto, creamos un archivo llamado test-orm.js.
+    2. Creamos un script de prueba.
+
+    3. Ejecutamos la prueba
+        Bash
+        node test-orm.js
+        
+        Nota Sale error:  Failed query: select ... from "products" "products" params:.
+        ¿Qué está pasando?
+            Drizzle ORM es muy inteligente, pero para hacer consultas complejas y mapear las tablas orientadas a objetos (db.query.products.findMany()), necesita que le definamos explícitamente las relaciones en el archivo del esquema. Si no, se lía intentando adivinar cómo se cruzan las tablas y duplica el alias en la query de SQL.
+
+        Solución: Nos faltaba EL PUENTE DE RELACIONES para Drizzle
+        ¿Qué estaba pasando?
+            Como tu archivo db.js está dentro de la carpeta lib/, poner ./schema.js significa que Node va a buscar el esquema en lib/schema.js. Eso es correcto. Pero, en tu base de datos de Neon en la nube, las columnas se llaman exactamente category_id (con barra baja, como lo definimos en los scripts de SQL nativo).
+
+            Si nos fijamos en la consulta que falla, Drizzle intenta buscar "products"."category_id". Drizzle por defecto mapea los nombres exactamente igual que en JavaScript si no le ponemos un alias explícito en la columna del esquema, haciendo que el motor de Neon devuelva un error silencioso porque no encuentra coincidencia exacta con el esquema interno del driver serverless.
+
+            Se probó varias soluciones pero nos quedamos bloqueados,, pasamos a introducir TS
+
+
+## Paso 4.6: Actualizar server.js para Producción Segura
+Vamos a reescribir tu archivo de servidor. Utilizaremos el cliente db para lanzar la query relacional parametrizada exacta que nos dio éxito rotundo en Vercel, y dejaremos preparada la estructura para el Frontend y CORS que te pidió el tutor.
+
+    1. Abrimos el archivo server.js en la raíz del proyecto.
+    2.  Acutalizamos contenido con Middleware para entender JSON en el cuerpo de las peticiones (POST), ENDPOINTS y consultas.

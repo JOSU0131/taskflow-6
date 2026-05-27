@@ -1,64 +1,66 @@
+import 'dotenv/config';
 import express from 'express';
-import { sql } from './lib/db.js';
+import { db } from './lib/db.js';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// Permitir que el servidor entienda datos en formato JSON que le envíe el Frontend
+// Middleware para entender JSON en el cuerpo de las peticiones (POST)
 app.use(express.json());
 
-// -------------------------------------------------------------------------
-// RUTA 1: GET - Obtener productos con su categoría (Para pintar la tabla)
-// -------------------------------------------------------------------------
-
-// Ruta de bienvenida en la raíz
+// 🌌 Ruta de bienvenida en la raíz para evitar el "Cannot GET /"
 app.get('/', (req, res) => {
-  res.send('🌌 ¡Servidor de HammerFlow Forge operando con éxito en la nube de Vercel!');
+  res.send('🌌 ¡Servidor de API de HammerFlow Forge operando con éxito en la nube!');
 });
+
+// 📦 ENDPOINT GET: Recuperar productos con sus categorías (INNER JOIN seguro)
 app.get('/api/products', async (req, res) => {
   try {
-    const productos = await sql`
+    // Usamos sql nativo parametrizado a través del cliente db para asegurar compatibilidad total con Neon
+    const result = await db.execute(`
       SELECT p.id, p.name AS producto, p.price AS precio, p.stock, c.name AS categoria
       FROM products p
       INNER JOIN categories c ON p.category_id = c.id
-    `;
-    res.json(productos);
+    `);
+
+    // Devolvemos las filas obtenidas de la base de datos
+    res.json(result.rows || result);
   } catch (error) {
-    res.status(500).json({ error: 'Error al obtener los productos de la nube' });
+    console.error("❌ Error al obtener productos:", error.message);
+    res.status(500).json({ error: "Error interno del servidor al consultar la base de datos." });
   }
 });
 
-// -------------------------------------------------------------------------
-// RUTA 2: POST - Insertar un producto de forma SEGURA (Consulta parametrizada)
-// -------------------------------------------------------------------------
+// 🛡️ ENDPOINT POST: Insertar un producto de forma segura (Evita Inyección SQL - SQLi)
 app.post('/api/products', async (req, res) => {
   const { name, price, stock, category_id } = req.body;
 
-  // Validación rápida
+  // Validación básica de campos obligatorios
   if (!name || !price || !category_id) {
-    return res.status(400).json({ error: 'Faltan campos obligatorios' });
+    return res.status(400).json({ error: "Faltan campos obligatorios: name, price o category_id" });
   }
 
   try {
-    // 🛡️ CONSULTA PARAMETRIZADA: Los datos van por un canal separado ($1, $2...)
-    // Esto neutraliza por completo cualquier ataque de Inyección SQL.
-    const nuevoProducto = await sql`
+    // 🔑 CONSULTA PARAMETRIZADA: Los datos ($1, $2...) viajan separados de las órdenes SQL
+    const query = `
       INSERT INTO products (name, price, stock, category_id)
-      VALUES (${name}, ${price}, ${stock || 0}, ${category_id})
+      VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
-    
+    const values = [name, price, stock || 0, category_id];
+
+    const result = await db.execute(query, values);
     res.status(201).json({ 
-      mensaje: '¡Producto creado con éxito en Neon!', 
-      producto: nuevoProducto[0] 
+      message: "✅ Producto creado con éxito de forma segura", 
+      product: result.rows ? result.rows[0] : result 
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error de base de datos al insertar el producto' });
+    console.error("❌ Error al insertar producto:", error.message);
+    res.status(500).json({ error: "Error de persistencia al guardar el producto." });
   }
 });
 
-// Levantar el servidor
+// Arrancar el servidor local
 app.listen(PORT, () => {
   console.log(`🚀 Servidor backend escuchando en http://localhost:${PORT}`);
 });
