@@ -350,7 +350,7 @@ Añadimos fix:
     2. Falta el script "start": Vercel en su entorno de producción no sabe intuitivamente cómo levantar el backend si no le defines un script de arranque con node server.js.
 
 
-## Paso 5: Crear la carpeta de documentación técnicos requeridos
+## Paso 5. Crear la carpeta de documentación técnicos requeridos
     5.1. Faltaba crear el documento: docs/analisis-sql.md 
 
     Explicación Técnica de la Defensa:
@@ -360,3 +360,56 @@ Añadimos fix:
     Introducimos CORS (Cross-Origin Resource Sharing) es el sistema de control que usan los navegadores para autorizar que una web montada en un sitio ( futuro Frontend en Vite) pueda leer los datos de un servidor en otro dominio (el Backend en Vercel). Si no lo instalas, el Frontend te dará un error de bloqueo en rojo.
             bash
             npm install cors
+
+
+## Paso 6. Crear el Frontend con Vite + TS
+Vamos a inicializar el proyecto del Frontend de manera estructurada dentro del repositorio, usando Vite, TypeScript y Tailwind CSS para que la tabla de productos luzca impecable y profesional.
+
+Vamos a configurar el entorno de cliente (el frontend):
+
+    1. Inicializar el proyecto con Vite + TypeScript
+        Ejecuta el siguiente comando en la terminal (le daremos el nombre de frontend a la carpeta):
+            Bash
+            npm create vite@latest frontend -- --template react-ts
+
+    2. Instalar las dependencias y Tailwind CSS
+        Entramos en la nueva carpeta e instala Tailwind para tener estilos profesionales sin esfuerzo:
+            Bash
+            cd frontend
+            npm install
+            npm install -D tailwindcss @tailwindcss/vite
+
+    3. Configurar el compilador de estilos
+        Con las nuevas versiones modernas de Vite, configurar Tailwind es tan sencillo como abrir el archivo frontend/vite.config.ts y añadir el plugin. 
+        - Introducir el import de Tailwind: "import tailwindcss from '@tailwindcss/vite'"
+        - Y añadir el plugin: "tailwindcss()],"
+
+    4. Activar las directivas de estilos automaticos de Tailwind
+        Abrimos el archivo frontend/src/index.css, borramos todo su contenido interno y pegamos únicamente la línea de import en la parte superior para inicializar Tailwind.
+
+## Paso 6.1 Frontend en TypeScript!
+Ahora que el backend está a salvo con cors instalado y sus librerías reparadas, vamos a dar el salto al Frontend dentro de la carpeta frontend/ que creamos con Vite y TypeScript.
+
+    1. Abrimos el archivo frontend/src/**App.tsx **
+    2. Borramos todo lo que venga por defecto.
+    3. Introducimos código tipado con TypeScript para que se conecta a tu API y este consumirá API real de Vercel y pintará la tabla.
+    
+- FIX de error. "Error en el servidor: 500"
+
+El eslabón perdido: Las Variables de Entorno en la Nube
+Cuando ejecutas el proyecto en local, tu servidor Express lee las credenciales de la base de datos desde el archivo .env. Sin embargo, por motivos estrictos de seguridad, el archivo .env nunca se sube a GitHub ni a Vercel.
+
+    Como el backend de Vercel no tiene ese archivo, la variable DATABASE_URL está completamente vacía en la nube, y al intentar hacer el INNER JOIN con Neon DB, el código explota y te lanza ese Error 500.
+
+    FIX:
+    1. Entra en tu panel de control de Vercel.
+    2. Haz clic en tu proyecto (el que corresponde al backend, taskflow-6).
+    4. Buscamos con el buscador de Vercel (ya que de otra forma no encontrabamos enviroment variables)
+
+    5. Rellena los dos campos que te aparecen:
+
+        Key (Clave): DATABASE_URL
+
+        Value (Valor): Pega tu cadena de conexión completa de Neon DB (la que empieza por postgresql://... que tienes guardada en tu .env local).
+
+    6. Haz clic en Save.
