@@ -321,3 +321,31 @@ Vamos a reescribir tu archivo de servidor. Utilizaremos el cliente db para lanza
 
     1. Abrimos el archivo server.js en la raíz del proyecto.
     2.  Acutalizamos contenido con Middleware para entender JSON en el cuerpo de las peticiones (POST), ENDPOINTS y consultas.
+
+## NOTA IMPORTANTE. ERROR archivos Vercel
+Al buscar el error, encontré el error en los logs de deploys dentro de la web Vercel.
+
+En vercel.json en la raíz del proyecto. Hay una directiva obsoleta llamada "builds". Cuando Vercel ve eso, ignora por completo la configuración moderna de Node.js y levanta tu servidor Express como si fuera una función Serverless estática vieja aislada. Al hacerlo, no lee la variable DATABASE_URL, rompe la conexión y te escupe el error 500 en /api/products o el 404 en /api.
+
+Vamos a limpiar esa configuración heredada para que Vercel procese el server.js con las variables de entorno reales de Neon de forma moderna.
+
+1. Nuevo vercel.json
+Para ordenar a Vercel que redirija todo el tráfico directamente a tu archivo server.js de Express sin usar el legado de builds.
+        JSON
+            {
+            "version": 2,
+            "rewrites": [
+                { "source": "/(.*)", "destination": "/server.js" }
+            ]
+            }
+            ---
+2. Modificar package.json
+Vercel necesita saber exactamente cómo arrancar la aplicación Express en su entorno de producción de manera global.
+
+En package.json nos asegúramos de tener una propiedad "type": "module" (para que acepte los import) y un bloque "scripts" con el comando start.
+
+Añadimos fix:
+    1. "main": "index.js": Vercel intentaría arrancar un archivo llamado index.js, pero tu servidor se llama server.js.
+
+    2. Falta el script "start": Vercel en su entorno de producción no sabe intuitivamente cómo levantar el backend si no le defines un script de arranque con node server.js.
+
