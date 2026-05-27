@@ -349,3 +349,14 @@ Añadimos fix:
 
     2. Falta el script "start": Vercel en su entorno de producción no sabe intuitivamente cómo levantar el backend si no le defines un script de arranque con node server.js.
 
+
+## Paso 5: Crear la carpeta de documentación técnicos requeridos
+    5.1. Faltaba crear el documento: docs/analisis-sql.md 
+
+    Explicación Técnica de la Defensa:
+        Al separar la estructura de la consulta ($1, $2, $3, $4) de los datos reales del array values, el driver de Neon envía los parámetros de forma aislada al motor de PostgreSQL. Aunque un atacante intente inyectar código dañino en el campo name (ejemplo: 'pincel'; DROP TABLE products;--), Postgres lo procesará puramente como una cadena de texto literal (el nombre del producto pasará a llamarse literalmente así), anulando por completo cualquier intento de ejecución de comandos arbitrarios.
+
+    5.2. Habilitar CORS en el backend (`server.js`)
+    Introducimos CORS (Cross-Origin Resource Sharing) es el sistema de control que usan los navegadores para autorizar que una web montada en un sitio ( futuro Frontend en Vite) pueda leer los datos de un servidor en otro dominio (el Backend en Vercel). Si no lo instalas, el Frontend te dará un error de bloqueo en rojo.
+            bash
+            npm install cors

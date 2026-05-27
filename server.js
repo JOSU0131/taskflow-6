@@ -1,11 +1,14 @@
 import 'dotenv/config';
 import express from 'express';
+import cors from 'cors'; // 1. Importar CORS
 import { db } from './lib/db.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware para entender JSON en el cuerpo de las peticiones (POST)
+// 2. Permir que cualquier aplicación Frontend consulte tu API de forma segura
+app.use(cors()); // Habilitar CORS para todas las rutas
 app.use(express.json());
 
 // 🌌 Ruta de bienvenida en la raíz para evitar el "Cannot GET /"
