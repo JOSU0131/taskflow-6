@@ -413,3 +413,13 @@ Cuando ejecutas el proyecto en local, tu servidor Express lee las credenciales d
         Value (Valor): Pega tu cadena de conexión completa de Neon DB (la que empieza por postgresql://... que tienes guardada en tu .env local).
 
     6. Haz clic en Save.
+
+## Nuevo problema
+Aquí está el problema: Cuando utilizas el conector de Drizzle optimizado para Neon Serverless (drizzle-orm/neon-serverless) junto con el esquema relacional que importas (import * as schema from './schema.js';), el método .execute() de Drizzle no devuelve directamente un objeto con la propiedad .rows en formato crudo de la misma forma que lo haría el driver de pg tradicional. Al intentar mapear result.rows, el servidor devuelve un error interno (undefined) y lanza la excepción 500.
+
+Además, al estar usando Drizzle ORM, ¡no necesitas escribir el código SELECT e INNER JOIN a mano como texto crudo! La ventaja de un ORM es que puede construir esa consulta de forma limpia, segura y totalmente automatizada.
+
+    🛠️ La Solución: Corregir server.js
+    Vamos a reescribir el endpoint GET /api/products en tu server.js utilizando la sintaxis nativa de Drizzle o adaptando el .execute() para que no falle en producción.
+
+    En el archivo server.js en la raíz del proyecto y reemplazamos el bloque completo del app.get('/api/products', ...)
