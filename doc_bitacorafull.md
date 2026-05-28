@@ -435,3 +435,53 @@ Aquí está el fallo definitivo:
 
         ¿Por qué explota? 
         En entornos Serverless con el driver @neondatabase/serverless utilizando el método db.execute(), la base de datos es extremadamente estricta con las mayúsculas, minúsculas y el tipado del driver de Drizzle. Al mandar una cadena de texto concatenada manualmente con +, si hay el más mínimo desfase de espacios o si el conector serverless intenta mapear el resultado mixto del INNER JOIN (que no es una tabla pura), el driver aborta de golpe arrojando el Error 500
+
+### FIX 
+
+Resolución de Error 500 (FUNCTION_INVOCATION_FAILED) en Vercel Serverless
+
+¿Por qué explotaba? 
+    El compilador de Linux en la nube es muy sensible y unos "pequeños cambios" son la diferencia absoluta.
+
+    EL FALLO:
+        Antes: Tenía un bloque if (process.env.NODE_ENV !== 'production') envolviendo el app.listen(PORT)
+        
+        Ahora: Se eliminó por completo ese bloque y solo se dejó export default app;.
+
+        Por qué fue el cambio: 
+            Aunque el condicional intentaba proteger la producción, en entornos Serverless puros como Vercel, la mera presencia de código que haga referencia a sockets o hilos de escucha activos en Express puede generar conflictos durante la optimización del árbol de dependencias (tree-shaking) del compilador de Vercel. Limpiar el archivo para que actúe únicamente como un módulo exportable (export default app) garantizó que la plataforma serverless empaquetara la función sin dependencias fantasma de red local.
+
+####  RESUMEN TECNICO. 🔴 Problema Detectado
+    Al desplegar el backend de la Fase 6 en Vercel, las peticiones hacia `/api/products` devolvían un código de estado `500 Internal Server Error` (acompañado de errores de CORS simulados en el frontend). Al inspeccionar las URLs de producción de Vercel directamente, la plataforma arrojaba el código de error nativo `FUNCTION_INVOCATION_FAILED`.
+
+    🕵️‍♂️ Causa Raíz
+    1. **Error de Enrutamiento Relativo (Sensibilidad de Entorno):** El archivo `server.js` (ubicado en la raíz) importaba el esquema utilizando un prefijo incorrecto (`../schema.js`). Mientras que en entornos locales tolerantes el archivo se resolvía, el contenedor Linux de Vercel bloqueaba la compilación al intentar buscar módulos fuera del directorio del proyecto.
+    2. **Conflicto de Ciclo de Vida Serverless:** El backend mantenía lógica condicional para inicializar una escucha tradicional de puertos (`app.listen`). En arquitecturas Serverless, el servidor Express no debe autoejecutarse ni abrir puertos, sino exportarse limpiamente como un módulo para que la plataforma lo invoque y lo destruya de forma asíncrona bajo demanda.
+
+    🛠️ Solución Aplicada
+    1. **Unificación de Rutas:** Se corrigió el import del esquema en `server.js` utilizando la ruta exacta del mismo nivel (`./schema.js`).
+    2. **Transición a Serverless Puro:** Se eliminó por completo el método de escucha local `app.listen` y se unificó la salida del archivo mediante la exportación por defecto (`export default app;`).
+    3. **Optimización del Driver de Base de Datos:** Se migró la configuración en `lib/db.js` de un driver basado en flujos WebSocket continuos (`neon-serverless`) hacia el driver optimizado para peticiones web asíncronas HTTP rápidas (`neon-http`), reduciendo los tiempos de espera y evitando cierres forzados de conexión por parte del middleware de Vercel.
+
+    Aprendizaje Clave para el Futuro
+    * Los entornos Serverless de producción exigen código modular estricto y no instancias de servidores de ejecución infinita.
+    * Las rutas relativas de importación deben validarse en función de la posición real del archivo en el árbol de directorios para evitar crasheos silenciosos en sistemas operativos Linux basados en la nube.
+
+    NOTA ERROR: de comportamiento de Producción Final (Error 404)
+        Al unificar el despliegue reconfigurando el "Root Directory" hacia la subcarpeta frontend, la URL de producción principal pasó a servir exclusivamente los activos estáticos de Vite y Tailwind. Esto causó un error 404 en las peticiones HTTP internas, ya que los endpoints del backend (`/api/products`) dejaron de estar expuestos bajo el mismo dominio. El flujo completo (DB -> Backend -> Frontend) queda validado y completamente funcional en el entorno de desarrollo local (`localhost:5173`).
+
+## FINAL Despliegue Exitoso de la Arquitectura Decoupled (Fase 6)
+
+### 🔴 Desafío Final de Infraestructura
+Al unificar el Frontend y el Backend en un solo proyecto de Vercel usando la misma URL, se generaban conflictos de rutas y bloqueos de seguridad por CORS. El Frontend "pisaba" los endpoints de la API (`/api/products`), impidiendo que los datos se mostraran en producción.
+
+### 🛠️ Solución Implementada
+Para cumplir estrictamente con los entregables requeridos de la tarea, se separó la infraestructura en dos proyectos independientes dentro de Vercel usando el mismo repositorio de GitHub:
+
+1. **Servidor API (Backend):** Se restauró el proyecto original `taskflow-6` apuntando al directorio raíz vacío para reactivar Express, Drizzle ORM y la variable segura `DATABASE_URL` conectada a Neon DB.
+2. **Cliente Web (Frontend):** Se creó un nuevo proyecto dedicado (`taskflow-6-frontend`) aislando el Root Directory en la carpeta `/frontend`. Se inyectó la variable de entorno `VITE_API_URL` apuntando a la dirección del backend de producción.
+
+### 🏁 Resultado y Validación
+La separación de entornos resolvió por completo los errores 404 y de CORS. El frontend desplegado compila perfectamente los estilos de Tailwind y consume con éxito los datos relacionales en la nube, mostrando el inventario completo sincronizado de forma permanente y automática a través de internet.
+
+

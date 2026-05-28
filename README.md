@@ -14,7 +14,7 @@ Hemos s# 🌌 HammerFlow Forge - Gestión de Inventario Relacional
 | Componente | Plataforma | URL de Producción |
 | :--- | :--- | :--- |
 | **Backend API** | Vercel | [https://taskflow-6.vercel.app](https://taskflow-6.vercel.app) |
-| **Frontend Web** | Vercel | *(Próximamente)* |
+| **Frontend Web** | Vercel | [taskflow-6-frontend.vercel.app]
 | **Base de Datos**| Neon DB | PostgreSQL Cloud Serverless |
 
 ---
