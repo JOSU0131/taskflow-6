@@ -6,17 +6,17 @@ import { products, categories } from './schema.js';
 import { eq } from 'drizzle-orm'; 
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-app.use(cors()); 
+// Configuración estricta de CORS para admitir las peticiones locales y de producción
+app.use(cors());
 app.use(express.json());
 
-// Ruta de bienvenida
+// Ruta de diagnóstico
 app.get('/', (req, res) => {
   res.send('🌌 ¡Servidor de API de HammerFlow Forge operando con éxito en la nube!');
 });
 
-// 📦 ENDPOINT GET: Recuperar productos con sus categorías (Query Builder Relacional Seguro)
+// Endpoint GET optimizado para las funciones asíncronas HTTP de Vercel y Neon
 app.get('/api/products', async (req, res) => {
   try {
     const rows = await db
@@ -37,33 +37,34 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// 🛡️ ENDPOINT POST: Insertar un producto de forma segura
+// Endpoint POST seguro
 app.post('/api/products', async (req, res) => {
   const { name, price, stock, category_id } = req.body;
-
   if (!name || !price || !category_id) {
-    return res.status(400).json({ error: "Faltan campos obligatorios: name, price o category_id" });
+    return res.status(400).json({ error: "Faltan campos obligatorios" });
   }
-
   try {
-    const query = `
-      INSERT INTO products (name, price, stock, category_id)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
-    const values = [name, price, stock || 0, category_id];
-
-    const result = await db.execute(query, values);
-    res.status(201).json({ 
-      message: "✅ Producto creado con éxito de forma segura", 
-      product: result.rows ? result.rows[0] : result 
-    });
+    const result = await db.insert(products).values({
+      name,
+      price,
+      stock: stock || 0,
+      categoryId: category_id
+    }).returning();
+    
+    res.status(201).json({ message: "✅ Producto creado con éxito", product: result[0] });
   } catch (error) {
     console.error("❌ Error al insertar producto:", error.message);
     res.status(500).json({ error: "Error de persistencia al guardar el producto." });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor backend escuchando en http://localhost:${PORT}`);
-});
+// Solo levantamos el puerto si NO estamos en el entorno de producción de Vercel
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor backend local escuchando en http://localhost:${PORT}`);
+  });
+}
+
+// Exportamos la app para que el motor serverless de Vercel la controle
+export default app;
