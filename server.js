@@ -16,18 +16,21 @@ app.get('/', (req, res) => {
   res.send('🌌 ¡Servidor de API de HammerFlow Forge operando con éxito en la nube!');
 });
 
-// 📦 ENDPOINT GET: Recuperar productos con sus categorías (INNER JOIN seguro)
+// 📦 ENDPOINT GET: Recuperar productos con sus categorías (INNER JOIN seguro con Drizzle)
 app.get('/api/products', async (req, res) => {
   try {
-    // Usamos sql nativo parametrizado a través del cliente db para asegurar compatibilidad total con Neon
-    const result = await db.execute(`
-      SELECT p.id, p.name AS producto, p.price AS precio, p.stock, c.name AS categoria
-      FROM products p
-      INNER JOIN categories c ON p.category_id = c.id
-    `);
+    // Usamos el método .execute() nativo de Drizzle pero asegurando la extracción correcta del resultado
+    const result = await db.execute(
+      'SELECT p.id, p.name AS producto, p.price AS precio, p.stock, c.name AS categoria ' +
+      'FROM products p ' +
+      'INNER JOIN categories c ON p.category_id = c.id'
+    );
 
-    // Devolvemos las filas obtenidas de la base de datos
-    res.json(result.rows || result);
+    // En el conector serverless de Neon, las filas pueden venir directamente en el objeto result 
+    // o bajo result.rows dependiendo de la versión interna. Aseguramos ambos casos:
+    const rows = result.rows ? result.rows : result;
+    
+    res.json(rows);
   } catch (error) {
     console.error("❌ Error al obtener productos:", error.message);
     res.status(500).json({ error: "Error interno del servidor al consultar la base de datos." });
