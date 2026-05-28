@@ -1,35 +1,35 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors'; // 1. Importar CORS
+import cors from 'cors'; 
 import { db } from './lib/db.js';
+import { products, categories } from './schema.js'; 
+import { eq } from 'drizzle-orm'; 
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware para entender JSON en el cuerpo de las peticiones (POST)
-// 2. Permir que cualquier aplicación Frontend consulte tu API de forma segura
-app.use(cors()); // Habilitar CORS para todas las rutas
+app.use(cors()); 
 app.use(express.json());
 
-// 🌌 Ruta de bienvenida en la raíz para evitar el "Cannot GET /"
+// Ruta de bienvenida
 app.get('/', (req, res) => {
   res.send('🌌 ¡Servidor de API de HammerFlow Forge operando con éxito en la nube!');
 });
 
-// 📦 ENDPOINT GET: Recuperar productos con sus categorías (INNER JOIN seguro con Drizzle)
+// 📦 ENDPOINT GET: Recuperar productos con sus categorías (Query Builder Relacional Seguro)
 app.get('/api/products', async (req, res) => {
   try {
-    // Usamos el método .execute() nativo de Drizzle pero asegurando la extracción correcta del resultado
-    const result = await db.execute(
-      'SELECT p.id, p.name AS producto, p.price AS precio, p.stock, c.name AS categoria ' +
-      'FROM products p ' +
-      'INNER JOIN categories c ON p.category_id = c.id'
-    );
+    const rows = await db
+      .select({
+        id: products.id,
+        producto: products.name,
+        precio: products.price,
+        stock: products.stock,
+        categoria: categories.name
+      })
+      .from(products)
+      .innerJoin(categories, eq(products.categoryId, categories.id));
 
-    // En el conector serverless de Neon, las filas pueden venir directamente en el objeto result 
-    // o bajo result.rows dependiendo de la versión interna. Aseguramos ambos casos:
-    const rows = result.rows ? result.rows : result;
-    
     res.json(rows);
   } catch (error) {
     console.error("❌ Error al obtener productos:", error.message);
@@ -37,17 +37,15 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// 🛡️ ENDPOINT POST: Insertar un producto de forma segura (Evita Inyección SQL - SQLi)
+// 🛡️ ENDPOINT POST: Insertar un producto de forma segura
 app.post('/api/products', async (req, res) => {
   const { name, price, stock, category_id } = req.body;
 
-  // Validación básica de campos obligatorios
   if (!name || !price || !category_id) {
     return res.status(400).json({ error: "Faltan campos obligatorios: name, price o category_id" });
   }
 
   try {
-    // 🔑 CONSULTA PARAMETRIZADA: Los datos ($1, $2...) viajan separados de las órdenes SQL
     const query = `
       INSERT INTO products (name, price, stock, category_id)
       VALUES ($1, $2, $3, $4)
@@ -66,7 +64,6 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-// Arrancar el servidor local
 app.listen(PORT, () => {
   console.log(`🚀 Servidor backend escuchando en http://localhost:${PORT}`);
 });

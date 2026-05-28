@@ -415,11 +415,23 @@ Cuando ejecutas el proyecto en local, tu servidor Express lee las credenciales d
     6. Haz clic en Save.
 
 ## Nuevo problema
-Aquí está el problema: Cuando utilizas el conector de Drizzle optimizado para Neon Serverless (drizzle-orm/neon-serverless) junto con el esquema relacional que importas (import * as schema from './schema.js';), el método .execute() de Drizzle no devuelve directamente un objeto con la propiedad .rows en formato crudo de la misma forma que lo haría el driver de pg tradicional. Al intentar mapear result.rows, el servidor devuelve un error interno (undefined) y lanza la excepción 500.
 
-Además, al estar usando Drizzle ORM, ¡no necesitas escribir el código SELECT e INNER JOIN a mano como texto crudo! La ventaja de un ORM es que puede construir esa consulta de forma limpia, segura y totalmente automatizada.
+Aquí está el fallo definitivo: 
+    Cuando usas @neondatabase/serverless con drizzle-orm/neon-serverless, el método db.execute() devuelve un objeto de resultado que no contiene un array directo en .rows de la misma manera que el driver clásico de PostgreSQL (pg). Al intentar hacer result.rows, Node en Vercel lee un valor incompatible o vacío, rompe la ejecución en el try, salta al catch y te escupe el código 500.  
+    
+    🛠️ La corrección obligatoria en server.js
+        Tenemos que cambiar esa ruta para que extraiga los datos de forma compatible con Drizzle Serverless.  Abre tu archivo server.js en la raíz del proyecto y reemplaza todo el bloque de la ruta app.get('/api/products', ...) por este fragmento corregido:  
 
-    🛠️ La Solución: Corregir server.js
-    Vamos a reescribir el endpoint GET /api/products en tu server.js utilizando la sintaxis nativa de Drizzle o adaptando el .execute() para que no falle en producción.
+    El Diagnóstico Técnico exacto (Por qué falla)
+        En el archivo schema.js definiste la relación en la tabla products de esta forma:
+            categoryId: uuid('category_id') // 🔑 Forzamos a que en la query SQL escriba "category_id" tal cual existe en Neon
+        
+        Pero si nos fijamos en la documentación de Drizzle, cuando declaras una columna con CamelCase (categoryId), Drizzle mapea internamente el objeto JavaScript, pero en la base de datos real a veces aplica comillas dobles estrictas o un mapeo inesperado si el texto SQL crudo no va exactamente igual.
 
-    En el archivo server.js en la raíz del proyecto y reemplazamos el bloque completo del app.get('/api/products', ...)
+        Sin embargo, el error definitivo está en la consulta de server.js:
+            'SELECT p.id, p.name AS producto, p.price AS precio, p.stock, c.name AS categoria ' +
+            'FROM products p ' +
+            'INNER JOIN categories c ON p.category_id = c.id'
+
+        ¿Por qué explota? 
+        En entornos Serverless con el driver @neondatabase/serverless utilizando el método db.execute(), la base de datos es extremadamente estricta con las mayúsculas, minúsculas y el tipado del driver de Drizzle. Al mandar una cadena de texto concatenada manualmente con +, si hay el más mínimo desfase de espacios o si el conector serverless intenta mapear el resultado mixto del INNER JOIN (que no es una tabla pura), el driver aborta de golpe arrojando el Error 500
